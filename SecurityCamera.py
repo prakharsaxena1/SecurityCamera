@@ -1,8 +1,10 @@
 # IMPORTS
+import glob
 import os
 import datetime
 import json
 import cv2 as cv
+import time
 
 # FUNCTIONS
 
@@ -53,11 +55,16 @@ def work():
     global cam
     cam = cv.VideoCapture(0)
     NMFR = conf["NMFR"]
+    time.sleep(5)
+    # Saving original after 5 seconds to get a better photo for reference
     original = cam.read()[1]
-    motionFlag = False
     cv.imwrite("./Images/original.jpeg", original)
+    # Motion controls
+    motionFlag = False
     motionCounter = 0
+    
     while cam.isOpened():
+        # Indicates motion frames for testing purpose
         print(motionCounter)
         frame = cam.read()[1]
         cnts = getCnts(cv.absdiff(original, frame))
@@ -85,27 +92,32 @@ def work():
             img2Video()
             break
 
-
+# A function to record frames one by one
 def record(frame, title):
-    folder = f"./{imgPath}/{title[0:13]}"
+    folder = f"{imgPath}{title[0:13]}"
     if not os.path.exists(folder):
         os.mkdir(folder)
     addTS(frame, title)
-    cv.imwrite(f"{imgPath}/{title[0:13]}/{title}.jpeg", frame)
+    cv.imwrite(f"{imgPath}{title[0:13]}/{title}.jpeg", frame)
 
-
+# To convert all the frames to 1 video file: part 2
 def recordVideoFromFolder(folder):
-    imgArray = [cv.imread(image) for image in os.listdir("./"+imgPath+"/"+folder)]
     size = (640, 480)
-    print(f'./{vidPath}/{folder}.avi')
-    out = cv.VideoWriter(f'./{vidPath}/{folder}.avi', cv.VideoWriter_fourcc(*'DIVX'), 15, size)
+    img_array = []
+    for filename in glob.glob(f'{imgPath}{folder}/*.jpeg'):
+        img = cv.imread(filename)
+        height, width, layers = img.shape
+        size = (width, height)
+        img_array.append(img)
 
-    for i in range(len(imgArray)):
-        out.write(imgArray[i])
-    
+    out = cv.VideoWriter(f'{vidPath}{folder}.avi', cv.VideoWriter_fourcc(*'DIVX'), 30, size)
+
+    for i in range(len(img_array)):
+        out.write(img_array[i])
     out.release()
 
 
+# To convert all the frames to 1 video file: part 1
 def img2Video():
     dirList = [f for f in os.listdir(imgPath) if os.path.isdir(imgPath+f)]
     for folder in dirList:
@@ -158,7 +170,7 @@ cam = None
 # Input option to use Security Camera
 option = input("Choose option (number): ")
 
-
+# Navigation Logic
 if option == "1":
     configName = input("Config name(Full path): ")
     if checkCFG(configName):
@@ -175,7 +187,8 @@ elif option == "2":
         print("No config found at ./cfg/")
         exit()
 elif option == "3":
-    cam.release()
+    if cam != None:
+        cam.release()
     os.system("cls")
     print(f'''          
  _____ _____ __    _____ 
@@ -192,7 +205,8 @@ elif option == "4":
                     |___|                              |___|                                             
                                     by github.com/prakharsaxena1
 ''')
-    cam.release()
+    if cam != None:
+        cam.release()
     exit()
 else:
     print("Wrong option")
